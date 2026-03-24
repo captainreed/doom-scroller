@@ -1,0 +1,168 @@
+# =============================================================================
+# API Keys and Secrets - NEVER COMMIT THESE
+# =============================================================================
+api key.txt
+api_key.txt
+*.key
+*.pem
+.env
+.env.*
+!.env.example
+secrets.json
+credentials.json
+
+# =============================================================================
+# Data Directory - Contains user data, screenshots, database
+# =============================================================================
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# =============================================================================
+# Browser Profile - Contains Instagram session cookies
+# =============================================================================
+browser-profile/
+
+# =============================================================================
+# Node.js / TypeScript
+# =============================================================================
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.npm
+.yarn
+yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.env/
+env.bak/
+venv.bak/
+*.egg
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+.installed.cfg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff/Linting
+.ruff_cache/
+
+# =============================================================================
+# IDEs and Editors
+# =============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# =============================================================================
+# Operating System
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# Playwright
+# =============================================================================
+playwright-report/
+playwright/.cache/
+test-results/
+
+# =============================================================================
+# Temporary and Cache Files
+# =============================================================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.cache
+.cache/
+tmp/
+temp/
+
+# =============================================================================
+# Logs
+# =============================================================================
+logs/
+*.log
+
+# =============================================================================
+# Optional: Uncomment to track specific files
+# =============================================================================
+# Keep empty data directories structure
+!data/.gitkeep
+!data/reports/.gitkeep
+!data/screenshots/.gitkeep
+!data/logs/.gitkeep

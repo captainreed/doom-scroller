@@ -1,0 +1,21 @@
+{
+  "name": "instagram-reels-browser-agent",
+  "version": "1.0.0",
+  "description": "Browser automation agent for collecting Instagram Reels",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "collect": "ts-node src/index.ts collect"
+  },
+  "dependencies": {
+    "playwright": "^1.42.0",
+    "sql.js": "^1.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

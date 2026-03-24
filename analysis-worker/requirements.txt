@@ -1,0 +1,4 @@
+anthropic>=0.18.0
+pillow>=10.0.0
+pytesseract>=0.3.10
+click>=8.1.0

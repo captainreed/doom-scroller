@@ -1,0 +1,794 @@
+Instagram Reels Daily Digest — MVP Specification
+1. Project Summary
+
+Build a personal-use local desktop/server application that:
+
+Opens Instagram in a real browser session using browser automation.
+Navigates the Reels feed.
+Watches a configurable number of reels per day.
+Collects text and context from each reel.
+Uses AI to summarize each reel and classify it.
+Produces a daily text report containing:
+major themes
+current-events summary
+potentially unsubstantiated claims from news-related reels
+notable reels that are funny, educational, or socially important
+links to the original reels
+Stores reel data, extracted claims, and generated reports in a local database.
+
+This is a personal-use MVP, not a production SaaS platform.
+
+2. MVP Goals
+2.1 Primary goals
+
+The MVP must:
+
+run locally on one machine
+use a persistent Instagram login session in a browser
+consume up to a configurable number of reels per day
+generate one report per day
+allow the user to edit a config file to change:
+total number of reels to consume per day
+output location of daily reports
+2.2 Non-goals for MVP
+
+Do not include these in MVP unless trivial:
+
+multi-user accounts
+web dashboard
+distributed workers
+Kubernetes deployment
+complex moderation UI
+downloading full video files by default
+creator analytics
+mobile app
+advanced fact-checking against live web sources
+continuous 24/7 stream processing
+3. Recommended Tech Stack
+3.1 Browser automation
+TypeScript
+Node.js
+Playwright
+
+Reason:
+
+most robust for modern browser automation
+strong support for persistent browser profiles
+good fit for navigating brittle web UI
+3.2 AI / media / reporting
+Python 3.11+
+
+Use Python for:
+
+transcription
+OCR
+summarization
+classification
+report generation
+database writes if desired
+3.3 Storage
+SQLite
+
+Reason:
+
+perfect for local single-user MVP
+no server setup required
+easy backup and inspection
+3.4 File outputs
+Markdown .md report files
+optional plain text .txt companion file
+3.5 Media tools
+ffmpeg for audio extraction or frame sampling
+transcription engine placeholder:
+faster-whisper preferred
+OCR engine placeholder:
+pytesseract or equivalent
+3.6 LLM integration
+
+Use an LLM API or local LLM for:
+
+summaries
+topic extraction
+claim extraction
+scoring
+final report compilation
+4. High-Level Architecture
+4.1 Components
+A. Browser Agent
+
+Responsible for:
+
+launching persistent browser session
+opening Instagram
+navigating Reels
+waiting through reel watch duration
+extracting basic page-visible metadata
+saving raw capture records
+
+Recommended language:
+
+TypeScript
+B. Capture Store
+
+Responsible for:
+
+writing reel metadata to SQLite
+saving screenshots locally
+storing extracted visible text
+tracking daily quota progress
+C. Analysis Worker
+
+Responsible for:
+
+OCR on screenshots
+transcription from captured audio if present
+summary generation
+categorization
+claim extraction
+scoring funny / educational / socially important / news relevance
+
+Recommended language:
+
+Python
+D. Report Generator
+
+Responsible for:
+
+compiling all processed reels for a given day
+producing daily markdown report
+saving report to configured output directory
+writing report record to DB
+
+Recommended language:
+
+Python
+E. Scheduler
+
+Responsible for:
+
+triggering the daily collection run
+optionally running once per day or on-demand
+
+For MVP:
+
+simple CLI invocation is enough
+cron / Task Scheduler support can be added later
+5. Folder Structure
+instagram-reel-digest/
+  browser-agent/
+    src/
+    package.json
+    tsconfig.json
+
+  analysis-worker/
+    app/
+    requirements.txt
+
+  shared/
+    config/
+      config.json
+    prompts/
+      reel_summary.txt
+      claim_extraction.txt
+      report_compile.txt
+
+  data/
+    app.db
+    screenshots/
+    audio/
+    reports/
+    logs/
+
+  scripts/
+    run_daily.sh
+    run_daily.ps1
+
+  README.md
+6. MVP Functional Requirements
+6.1 Browser/login behavior
+
+The system must:
+
+launch a real browser using Playwright
+support a persistent browser profile
+assume the user logs into Instagram manually once
+reuse the saved session on future runs
+fail gracefully if login is expired
+
+If login is expired:
+
+stop the run
+write a clear log entry
+do not crash the database
+6.2 Daily reel quota
+
+The system must:
+
+read daily_reel_target from config
+stop consuming reels after reaching that number for the current day
+avoid over-consuming if rerun later the same day
+track how many reels were already processed that day
+
+Example:
+
+if target = 120 and 70 already processed today, next run may process up to 50 more
+6.3 Reel consumption behavior
+
+For each reel:
+
+detect current reel URL if possible
+collect creator handle if visible
+collect caption text if visible
+collect timestamp or relative time if visible
+wait configured watch duration
+capture at least one screenshot
+optionally capture additional screenshots at intervals
+advance to next reel
+store raw reel record in database
+6.4 Minimum capture requirements
+
+For MVP, each reel record should attempt to capture:
+
+source URL
+creator handle
+caption text
+collection timestamp
+screenshot path
+any visible overlay text
+any available transcript text if produced
+status flags
+6.5 Analysis requirements
+
+Each collected reel must be analyzed into structured outputs:
+
+short summary
+main points
+topic tags
+whether it is news/current-events related
+whether it contains humor
+whether it is educational
+whether it is socially important
+whether it contains speculation
+whether it contains factual claims
+list of extracted claims
+likely unsupported / unsubstantiated flag for claims that appear asserted without support in the reel content
+6.6 Daily report requirements
+
+The system must generate one daily report containing:
+
+report date
+total reels processed
+top topics/themes
+current-events summary
+potentially unsubstantiated claims section
+funny picks
+educational picks
+socially important picks
+notable reel links
+
+The report must be saved to the configured output directory.
+
+7. Config File Specification
+7.1 MVP editable fields
+
+The config file must allow the user to edit only these two required fields:
+
+daily_reel_target
+report_output_dir
+
+Additional fields may exist but should have sane defaults.
+
+7.2 Example config file
+
+shared/config/config.json
+
+{
+  "daily_reel_target": 120,
+  "report_output_dir": "./data/reports"
+}
+7.3 Recommended extended config
+
+Claude may include these optional settings while keeping the above two as the only fields the user really needs to care about:
+
+{
+  "daily_reel_target": 120,
+  "report_output_dir": "./data/reports",
+  "watch_seconds_per_reel": 18,
+  "screenshots_per_reel": 2,
+  "browser_profile_dir": "./data/browser-profile",
+  "database_path": "./data/app.db",
+  "headless": false,
+  "max_run_minutes": 180,
+  "skip_if_already_completed_today": true
+}
+7.4 Config behavior rules
+if daily_reel_target is missing or invalid, default to 50
+if report_output_dir is missing, default to ./data/reports
+create report_output_dir if it does not exist
+log config validation warnings, do not hard crash unless config is unreadable
+8. Database Specification
+
+Use SQLite.
+
+Database file location should default to:
+
+./data/app.db
+9. Database Schema
+9.1 Table: app_config_snapshot
+
+Purpose:
+Store the config values used for a given run for traceability.
+
+CREATE TABLE app_config_snapshot (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    daily_reel_target INTEGER NOT NULL,
+    report_output_dir TEXT NOT NULL,
+    watch_seconds_per_reel INTEGER,
+    screenshots_per_reel INTEGER,
+    created_at TEXT NOT NULL
+);
+9.2 Table: runs
+
+Purpose:
+Track each execution of the collector/report pipeline.
+
+CREATE TABLE runs (
+    id TEXT PRIMARY KEY,
+    run_date TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    status TEXT NOT NULL,
+    reels_target INTEGER NOT NULL,
+    reels_collected INTEGER NOT NULL DEFAULT 0,
+    reels_processed INTEGER NOT NULL DEFAULT 0,
+    error_message TEXT
+);
+Notes
+id should be a UUID or timestamp-based unique ID
+run_date format: YYYY-MM-DD
+status examples:
+running
+completed
+failed
+partial
+9.3 Table: reels
+
+Purpose:
+Store one record per consumed reel.
+
+CREATE TABLE reels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    reel_date TEXT NOT NULL,
+    source_url TEXT,
+    creator_handle TEXT,
+    caption_text TEXT,
+    visible_overlay_text TEXT,
+    collected_at TEXT NOT NULL,
+    watch_duration_sec INTEGER,
+    screenshot_count INTEGER NOT NULL DEFAULT 0,
+    transcript_text TEXT,
+    raw_notes TEXT,
+    processing_status TEXT NOT NULL DEFAULT 'pending',
+    is_duplicate INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(source_url, reel_date),
+    FOREIGN KEY (run_id) REFERENCES runs(id)
+);
+Notes
+UNIQUE(source_url, reel_date) helps avoid duplicate same-day ingestion
+processing_status examples:
+pending
+processed
+failed
+9.4 Table: reel_screenshots
+
+Purpose:
+Track screenshot files associated with a reel.
+
+CREATE TABLE reel_screenshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reel_id INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    captured_at TEXT NOT NULL,
+    frame_index INTEGER,
+    ocr_text TEXT,
+    FOREIGN KEY (reel_id) REFERENCES reels(id)
+);
+9.5 Table: reel_analysis
+
+Purpose:
+Store structured AI analysis for each reel.
+
+CREATE TABLE reel_analysis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reel_id INTEGER NOT NULL UNIQUE,
+    short_summary TEXT,
+    main_points TEXT,
+    topic_tags TEXT,
+    category_primary TEXT,
+    category_secondary TEXT,
+    is_news_related INTEGER NOT NULL DEFAULT 0,
+    is_funny INTEGER NOT NULL DEFAULT 0,
+    is_educational INTEGER NOT NULL DEFAULT 0,
+    is_socially_important INTEGER NOT NULL DEFAULT 0,
+    contains_speculation INTEGER NOT NULL DEFAULT 0,
+    contains_factual_claims INTEGER NOT NULL DEFAULT 0,
+    funny_score REAL,
+    educational_score REAL,
+    social_importance_score REAL,
+    news_relevance_score REAL,
+    overall_noteworthiness_score REAL,
+    save_flag INTEGER NOT NULL DEFAULT 0,
+    analysis_created_at TEXT NOT NULL,
+    FOREIGN KEY (reel_id) REFERENCES reels(id)
+);
+Notes
+topic_tags can be stored as JSON string array
+main_points can be stored as JSON string array or plain text blob
+for MVP, JSON-as-text is acceptable in SQLite
+9.6 Table: claims
+
+Purpose:
+Store extracted claims from a reel.
+
+CREATE TABLE claims (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reel_id INTEGER NOT NULL,
+    claim_text TEXT NOT NULL,
+    claim_type TEXT NOT NULL,
+    confidence REAL,
+    appears_unsubstantiated INTEGER NOT NULL DEFAULT 0,
+    support_status TEXT NOT NULL DEFAULT 'unknown',
+    reasoning TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (reel_id) REFERENCES reels(id)
+);
+claim_type examples
+fact
+opinion
+prediction
+speculation
+satire
+advice
+support_status examples
+unknown
+supported_in_reel
+unsupported_in_reel
+unclear
+
+For MVP, “unsubstantiated” should mean:
+
+the reel appears to make a factual assertion
+but no support/evidence is presented in the reel itself or extracted content
+9.7 Table: daily_reports
+
+Purpose:
+Track generated daily reports.
+
+CREATE TABLE daily_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    report_date TEXT NOT NULL UNIQUE,
+    run_id TEXT,
+    total_reels INTEGER NOT NULL,
+    report_markdown_path TEXT NOT NULL,
+    report_text_path TEXT,
+    generated_at TEXT NOT NULL,
+    summary_blob TEXT,
+    FOREIGN KEY (run_id) REFERENCES runs(id)
+);
+9.8 Suggested indexes
+CREATE INDEX idx_runs_run_date ON runs(run_date);
+CREATE INDEX idx_reels_reel_date ON reels(reel_date);
+CREATE INDEX idx_reels_run_id ON reels(run_id);
+CREATE INDEX idx_claims_reel_id ON claims(reel_id);
+CREATE INDEX idx_daily_reports_report_date ON daily_reports(report_date);
+10. Data Model Notes
+10.1 Why separate reels and reel_analysis
+
+This separation makes it easier to:
+
+re-run analysis later
+inspect raw captured data independently
+debug AI outputs without recollecting reels
+10.2 Why separate claims
+
+Claims are one-to-many with reels, and each reel may contain zero or many claims.
+
+10.3 Why store screenshots separately
+
+One reel may have multiple screenshots. Keeping them normalized simplifies OCR and file tracking.
+
+11. Daily Workflow
+11.1 Standard run flow
+Load config file
+Validate config
+Open DB
+Create run record
+Check how many reels already exist for today
+Compute remaining quota
+If remaining quota is zero:
+optionally skip collection
+still allow report regeneration if desired
+Launch browser
+Navigate Instagram Reels
+Collect reels until remaining quota met or run fails
+Run analysis on newly collected reels
+Generate daily report
+Save report file(s)
+Write daily report row to DB
+Mark run completed
+12. Reel Processing Workflow
+12.1 Capture workflow per reel
+
+For each reel:
+
+detect unique reel URL if possible
+capture creator handle
+capture caption text
+wait for watch_seconds_per_reel
+capture screenshot(s)
+write raw reel record to DB
+move to next reel
+12.2 Analysis workflow per reel
+
+For each pending reel:
+
+gather caption text
+gather OCR text from screenshots
+gather transcript text if available
+combine all text into a normalized input document
+send to LLM for:
+summary
+main points
+categories
+scores
+claim extraction
+write reel_analysis
+write zero-to-many claims
+mark reel as processed
+13. Report Specification
+13.1 Report file name
+
+Recommended naming:
+
+daily_reel_digest_YYYY-MM-DD.md
+
+Example:
+
+daily_reel_digest_2026-03-22.md
+13.2 Report contents
+
+The markdown report should contain these sections:
+
+# Daily Reel Digest — YYYY-MM-DD
+
+## Summary
+- Total reels processed: X
+- Funny picks: Y
+- Educational picks: Z
+- Socially important picks: A
+- News-related reels: B
+- Potentially unsubstantiated claims: C
+
+## Top Themes
+- Theme 1
+- Theme 2
+- Theme 3
+
+## Current Events Summary
+Narrative summary of major current-events topics seen in reels today.
+
+## Potentially Unsubstantiated Claims
+### Claim 1
+- Claim text:
+- Creator:
+- Reel URL:
+- Why flagged:
+
+## Funny Picks
+### Reel title / creator
+- Why notable:
+- Link:
+
+## Educational Picks
+### Reel title / creator
+- Why notable:
+- Link:
+
+## Socially Important Picks
+### Reel title / creator
+- Why notable:
+- Link:
+
+## Notable Reels
+### Reel N
+- Summary:
+- Tags:
+- Link:
+14. MVP Classification Rules
+14.1 Required categories
+
+Each reel should receive one primary category and optional secondary tags.
+
+Suggested primary categories:
+
+funny
+educational
+news
+social_issue
+opinion
+lifestyle
+entertainment
+other
+14.2 Boolean flags
+
+Each reel should separately indicate:
+
+is_news_related
+is_funny
+is_educational
+is_socially_important
+contains_speculation
+contains_factual_claims
+
+This is better than using only a single category.
+
+15. Claim Extraction Rules
+
+The analysis worker should identify claims from reels that sound like assertions.
+
+15.1 Claims to extract
+
+Extract if the reel appears to assert:
+
+a factual statement
+a statistic
+a prediction
+a political/current-events assertion
+a health/finance/legal recommendation framed as fact
+15.2 Do not over-extract
+
+Avoid extracting:
+
+obvious jokes
+vague vibes
+purely emotional reactions
+obvious satire unless labeled as satire
+15.3 “Potentially unsubstantiated” MVP rule
+
+Mark a claim as potentially unsubstantiated when:
+
+it is presented as factual
+the reel provides no obvious support, evidence, citation, or context
+the extracted text alone does not justify confidence
+
+This is not a full truth-check. It is a support-within-content check for MVP.
+
+16. CLI Requirements
+
+Provide a simple command-line interface.
+
+16.1 Suggested commands
+Run full daily pipeline
+python -m app.main run-daily
+Generate report only
+python -m app.main generate-report --date 2026-03-22
+Analyze pending reels only
+python -m app.main analyze-pending
+Print today’s progress
+python -m app.main status
+17. Logging Requirements
+
+The system must log:
+
+config load success/failure
+browser startup success/failure
+login/session failures
+reel capture count
+per-reel processing failures
+report generation success/failure
+
+Log file location:
+
+./data/logs/
+
+Recommended naming:
+
+app_YYYY-MM-DD.log
+18. Error Handling Requirements
+18.1 General rules
+do not hard crash on one bad reel
+continue processing remaining reels where possible
+mark failed records clearly in DB
+always attempt to close browser cleanly
+always finalize run record with failed, partial, or completed
+18.2 Failure scenarios
+Browser fails to launch
+mark run failed
+log reason
+stop
+Instagram session invalid
+mark run failed
+log reason
+stop with message indicating manual re-login required
+One reel cannot be parsed
+log issue
+store partial record if available
+continue
+LLM analysis fails for one reel
+mark reel processing failed
+continue
+Report generation fails
+mark run partial or failed
+preserve collected data
+19. Claude Implementation Guidance
+19.1 Desired implementation style
+
+Ask Claude to implement this as a clean local MVP, not as over-engineered microservices.
+
+Preferred characteristics:
+
+modular code
+clear interfaces
+readable config handling
+SQLite migrations or startup schema creation
+safe file path handling
+deterministic report generation
+simple CLI
+19.2 Suggested split of responsibilities
+TypeScript browser agent
+
+Should expose a simple interface like:
+
+collect_reels(limit: number) -> raw capture files / DB rows
+Python worker
+
+Should handle:
+
+DB schema initialization
+pending reel analysis
+report generation
+CLI commands
+
+Claude may implement the whole project in Python if needed, but preferred architecture is:
+
+TS for browser automation
+Python for analysis/reporting
+20. Acceptance Criteria for MVP
+
+The MVP is complete when all of the following are true:
+
+User can edit a config file and change:
+daily reel target
+report output directory
+App can reuse a persistent Instagram login session.
+App can collect reels up to the configured daily quota.
+App stores raw reel metadata and screenshots in SQLite/file storage.
+App analyzes reels and stores:
+summaries
+categories
+flags
+claims
+App generates one daily markdown report in the configured directory.
+Report includes:
+top themes
+current-events summary
+potentially unsubstantiated claims
+funny picks
+educational picks
+socially important picks
+original reel links
+App handles partial failures gracefully.
+21. Nice-to-Have After MVP
+
+Not required now, but good future additions:
+
+web UI to review saved reels
+duplicate detection using transcript similarity
+creator allowlist/blocklist
+live web verification of extracted claims
+email delivery of daily digest
+configurable category thresholds
+export to JSON/CSV
+local semantic search over past reels

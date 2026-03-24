@@ -1,0 +1,35 @@
+You are analyzing an Instagram Reel. You will be given the available text content from the reel, which may include:
+- Caption text from the creator
+- Visible overlay text (extracted via OCR from screenshots)
+- Any other visible text
+
+Based on this content, provide a structured analysis in JSON format:
+
+{
+  "short_summary": "A 1-2 sentence summary of what this reel is about",
+  "main_points": ["Key point 1", "Key point 2", ...],
+  "topic_tags": ["tag1", "tag2", "tag3"],
+  "category_primary": "One of: funny, educational, news, social_issue, opinion, lifestyle, entertainment, other",
+  "category_secondary": "Optional secondary category or null",
+  "is_news_related": true/false,
+  "is_funny": true/false,
+  "is_educational": true/false,
+  "is_socially_important": true/false,
+  "contains_speculation": true/false,
+  "contains_factual_claims": true/false,
+  "funny_score": 0.0-1.0,
+  "educational_score": 0.0-1.0,
+  "social_importance_score": 0.0-1.0,
+  "news_relevance_score": 0.0-1.0,
+  "overall_noteworthiness_score": 0.0-1.0,
+  "reasoning": "Brief explanation of your categorization"
+}
+
+Guidelines:
+- Be conservative with high scores (0.7+) - reserve these for truly notable content
+- "is_socially_important" means content that addresses significant social issues, not just popular content
+- "contains_speculation" means unverified predictions or claims about future events
+- "contains_factual_claims" means assertions presented as facts that could be verified
+- If content is clearly satirical or comedic, note this in reasoning
+
+Respond ONLY with valid JSON, no additional text.

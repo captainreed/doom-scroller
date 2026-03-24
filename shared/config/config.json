@@ -1,0 +1,20 @@
+{
+  "daily_reel_target": 120,
+  "report_output_dir": "./data/reports",
+  "watch_seconds_per_reel": 18,
+  "screenshots_per_reel": 2,
+  "browser_profile_dir": "./data/browser-profile",
+  "database_path": "./data/app.db",
+  "headless": false,
+  "max_run_minutes": 180,
+  "skip_if_already_completed_today": true,
+  "llm": {
+    "provider": "anthropic",
+    "api_key_file": "./api key.txt",
+    "api_base_url": "https://api.anthropic.com",
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 4096
+  },
+  "screenshot_dir": "./data/screenshots",
+  "log_dir": "./data/logs"
+}
